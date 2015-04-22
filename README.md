@@ -9,11 +9,11 @@ Create a telepresence system with a embedded linux system (Beaglebone, Raspberry
 ### Requirements
 - GStreamer 1.4
 - GStreamer plugins (base, good, bad, ugly)
-- Boost libraries, for a cross plataform implementation of UDP Sockets and Threads.
+- Boost libraries, for a cross platform implementation of UDP Sockets and Threads.
 - Oculus Rift SDK
 
 ### Usage
-This proyect is under heavy development, the usage may be unintuitive, hopefully, future realeases will improve ease of use.
+This project is under heavy development, the usage may be unintuitive, hopefully, future realeases will improve ease of use.
 I used a Beaglebone Black, with Arch Linux as base system, for testing purposes.
 
 Beaglebone:
