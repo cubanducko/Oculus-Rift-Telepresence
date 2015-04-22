@@ -1,0 +1,82 @@
+gst-launch-1.0 -v -e v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 ! \
+      h264parse ! rtph264pay ! udpsink host=127.0.0.1 port=5000
+
+gst-launch-1.0 -v videotestsrc ! x264enc ! rtph264pay ! xvimagesink sync=false ! udpsink host=127.0.0.1 port=5000
+
+//Send UDP
+gst-launch-1.0 -v -e v4l2src device=/dev/video0 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 ! \
+      h264parse ! rtph264pay ! udpsink host=192.168.1.102 port=5000
+//Receive UDP
+gst-launch-1.0 udpsrc port=5000 ! application/x-rtp, payload=127 ! rtph264depay ! avdec_h264 ! xvimagesink sync=false
+
+//RTMP
+gst-launch-1.0 -v -e v4l2src device=/dev/video2 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 ! h264parse ! queue ! flvmux ! rtmpsink location="rtmp://172.16.0.102/live/1"
+gst-launch-1.0 -v -e v4l2src device=/dev/video0 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 ! h264parse ! queue ! flvmux ! rtmpsink location="rtmp://172.16.0.102/live/2"
+
+
+//Camara 1 Local
+gst-launch-1.0 -v -e v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1920,height=1080,framerate=30/1 !       h264parse ! avdec_h264 ! videocrop left=495 right=0 !  xvimagesink sync=false
+
+//Camara 2 Local
+gst-launch-1.0 -v -e v4l2src device=/dev/video2 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 !       h264parse ! avdec_h264 ! xvimagesink sync=false
+
+//Camara 1 local crop
+gst-launch-1.0 -v -e v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 !       h264parse ! avdec_h264 ! aspectratiocrop aspect-ratio=4/3 ! xvimagesink sync=false
+
+//Merge local
+gst-launch-1.0 -v -e v4l2src device=/dev/video2 ! queue ! video/x-h264,width=640,height=360,framerate=30/1 ! h264parse ! avdec_h264 ! \ 
+aspectratiocrop aspect-ratio=4/3 ! \
+videobox border-alpha=0 right=-640 ! videomixer name=mix ! xvimagesink sync=false \
+v4l2src device=/dev/video0 ! queue ! video/x-h264,width=640,height=360,framerate=30/1 ! h264parse ! avdec_h264 !\
+aspectratiocrop aspect-ratio=4/3 ! videobox border-alpha=0 left=-640 ! mix
+
+gst-launch-1.0 -v -e v4l2src device=/dev/video2 ! queue ! video/x-h264,width=640,height=360,framerate=30/1 ! h264parse ! avdec_h264 ! aspectratiocrop aspect-ratio=4/3 ! videobox border-alpha=0 right=-640 ! videomixer name=mix ! xvimagesink sync=false v4l2src device=/dev/video0 ! queue ! video/x-h264,width=640,height=360,framerate=30/1 ! h264parse ! avdec_h264 ! aspectratiocrop aspect-ratio=4/3 ! videobox border-alpha=0 left=640 ! mix.
+
+gst-launch-1.0 -v -e v4l2src device=/dev/video2 ! queue ! video/x-h264,width=640,height=360,framerate=30/1 ! h264parse ! avdec_h264 ! queue ! aspectratiocrop aspect-ratio=4/3 ! videobox border-alpha=0 ! videomixer name=mix ! xvimagesink sync=false v4l2src device=/dev/video0 ! queue ! video/x-h264,width=640,height=360,framerate=30/1 ! h264parse ! avdec_h264 ! queue ! aspectratiocrop aspect-ratio=4/3 ! videobox border-alpha=0 right=-427 ! mix.
+
+//Doble camara lado a lado
+gst-launch-1.0 videomixer name=mix \
+	sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1 \
+	sink_1::xpos=640   sink_1::ypos=0 sink_1::alpha=1 \
+	! xvimagesink sync=false v4l2src device=/dev/video0 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 ! queue ! videocrop left=320 right=320 ! queue ! mix.sink_0 \
+	v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 !  queue ! videocrop left=320 right=320 ! queue  ! mix.sink_1
+
+
+//Camara 1 deforme
+gst-launch-1.0 -v -e v4l2src device=/dev/video1 ! video/x-h264,width=1280,height=720,framerate=30/1 ! h264parse ! avdec_h264 ! glshader location=distorsion.frag ! glimagesink sync=false
+
+//Flujo local
+gst-launch-1.0 -v -e filesrc location=test.mp4 ! qtdemux name=dmux dmux.video_00 ! queue ! h264parse ! avdec_h264 !   dmux. !  dmux.audio_00 ! queue ! aacparse ! faad ! autoaudiosink
+
+gst-launch-1.0 filesrc location=pirana.mp4 ! qtdemux ! avdec_h264 ! autovideosink
+
+//Doble camara shader
+gst-launch-1.0 videoflip videomixer name=mix \
+	sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1 \
+	sink_1::xpos=640   sink_1::ypos=0 sink_1::alpha=1 \
+	! glimagesink sync=false v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 ! queue ! videocrop left=320 right=320 ! queue ! gleffects effect=5 ! mix.sink_0 \
+	v4l2src device=/dev/video0 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 !  queue ! videocrop left=320 right=320 ! queue  ! gleffects effect=5 ! mix.sink_1
+
+//Webcam normal
+primusrun gst-launch-1.0 -e v4l2src device=/dev/video2 ! video/x-raw, framerate=10/1, width=320, height=240 ! glimagesink sync=false ! glshader location=barrel.frag
+
+\\Doble camara shader oculus
+primusrun gst-launch-1.0 videomixer name=mix \
+	sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1 \
+	sink_1::xpos=640 sink_1::ypos=0 sink_1::alpha=1 \
+	! glshader location=dist.frag ! glimagesink sync=false v4l2src device=/dev/video0 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 ! queue ! videocrop left=320 right=320 ! queue ! mix.sink_0 \
+	v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 !  queue ! videocrop left=320 right=320 ! queue ! mix.sink_1
+
+\\Doble camara shader oculus vertical
+primusrun gst-launch-1.0 videomixer name=mix \
+	sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1 \
+	sink_1::xpos=640 sink_1::ypos=0 sink_1::alpha=1 \
+	! glshader location=dist.frag ! glimagesink sync=false v4l2src device=/dev/video2 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 ! queue ! videoflip method=clockwise ! videocrop left=40 right=40 top=280 bottom=280 ! queue ! mix.sink_0 \
+	v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=20/1 ! h264parse ! avdec_h264 !  queue ! videoflip method=counterclockwise ! videocrop left=40 right=40 top=280 bottom=280 ! queue ! mix.sink_1
+
+
+primusrun gst-launch-1.0 videomixer name=mix \
+ sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1 \
+ sink_1::xpos=960 sink_1::ypos=0 sink_1::alpha=1 \
+ ! glshader location=dist.frag ! glimagesink sync=false v4l2src device=/dev/video0 ! queue ! video/x-h264,width=1920,height=1080,framerate=30/1 ! h264parse ! avdec_h264 ! queue ! videoflip method=clockwise ! videocrop left=60 right=60 top=420 bottom=420 ! queue ! mix.sink_0 \
+ v4l2src device=/dev/video2 ! queue ! video/x-h264,width=1920,height=1080,framerate=30/1 ! h264parse ! avdec_h264 ! queue ! videoflip method=counterclockwise ! videocrop left=60 right=60 top=420 bottom=420 ! queue ! mix.sink_1

@@ -1,0 +1,6 @@
+//Vertical cameras
+gst-launch-1.0 videomixer name=mix \
+	sink_0::xpos=0 sink_0::ypos=0 sink_0::alpha=1 \
+	sink_1::xpos=640 sink_1::ypos=0 sink_1::alpha=1 \
+	! glshader location=dist.frag ! glimagesink sync=false udpsrc port=5000 ! application/x-rtp, payload=127 ! rtph264depay ! avdec_h264 ! queue ! videoflip method=clockwise ! videocrop left=40 right=40 top=280 bottom=280 ! queue ! mix.sink_0 \
+	udpsrc port=5001 ! application/x-rtp, payload=127 ! rtph264depay ! avdec_h264 !  queue ! videoflip method=counterclockwise ! videocrop left=40 right=40 top=280 bottom=280 ! queue ! mix.sink_1

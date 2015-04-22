@@ -1,0 +1,17 @@
+Para ver los alsa devices
+cat /proc/asound/cards
+
+Camara RTMP Sonido
+gst-launch-1.0 -v -e v4l2src device=/dev/video1 ! queue ! video/x-h264,width=1280,height=720,framerate=30/1 ! h264parse ! queue ! flvmux name=mux \
+alsasrc device=hw:1 ! audioresample ! audio/x-raw,rate=48000 ! queue ! faac bitrate=20000 ! queue ! mux. mux. ! rtmpsink location="rtmp://192.168.7.2/live/1"
+
+Sonido local
+gst-launch-1.0 -v -e alsasrc device=hw:1 ! audioconvert ! alsasink
+
+Sonido recibir UDP
+gst-launch-1.0 -v -e udpsrc port=5000 ! audio/x-raw,format=\(string\)S16LE,rate=44100,channels=1 ! alsasink sync=false
+
+Sonido UDP
+gst-launch-1.0 -v -e alsasrc device="plughw:1" ! audio/x-raw,format=\(string\)S16LE,rate=44100,channels=1 ! audioconvert ! udpsink host=127.0.0.1 port=5000
+
+
